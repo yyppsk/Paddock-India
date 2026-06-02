@@ -3,32 +3,37 @@ import { TRACK_HEIGHT } from './constants.js';
 import { placeAtTrack } from './trackFrame.js';
 import placements from './placements.json';
 
-export function createCircuitEnvironment({ scene, trackCurve }) {
+function getDefaultSurfaceY() {
+  return TRACK_HEIGHT;
+}
+
+export function createCircuitEnvironment({ scene, trackCurve, getSurfaceY = getDefaultSurfaceY }) {
   const environment = new THREE.Group();
   environment.name = 'circuit-environment';
   scene.add(environment);
+  const surfaceY = (t, offset = 0) => getSurfaceY((t + 1) % 1, trackCurve.getPointAt((t + 1) % 1)) + offset;
 
   for (const item of placements.trackRelative.raceGantry) {
-    addRaceGantry(environment, trackCurve, item.t);
+    addRaceGantry(environment, trackCurve, item.t, surfaceY);
   }
   for (const item of placements.trackRelative.pitComplex) {
-    addPitComplex(environment, trackCurve, item.t, item.side, item.lateral);
+    addPitComplex(environment, trackCurve, item.t, item.side, item.lateral, surfaceY);
   }
   for (const item of placements.trackRelative.grandstands) {
-    addGrandstand(environment, trackCurve, item.t, item.side, item.lateral);
+    addGrandstand(environment, trackCurve, item.t, item.side, item.lateral, surfaceY);
   }
   for (const item of placements.trackRelative.vendorVillages) {
-    addVendorVillage(environment, trackCurve, item.t, item.side, item.lateral, item.forward);
+    addVendorVillage(environment, trackCurve, item.t, item.side, item.lateral, item.forward, surfaceY);
   }
   for (const item of placements.trackRelative.serviceVehicles) {
-    addServiceVehicles(environment, trackCurve, item.t, item.side, item.lateral);
+    addServiceVehicles(environment, trackCurve, item.t, item.side, item.lateral, surfaceY);
   }
-  addMarshalPosts(environment, trackCurve);
-  addTrackLights(environment, trackCurve);
-  addSponsorBoards(environment, trackCurve);
+  addMarshalPosts(environment, trackCurve, surfaceY);
+  addTrackLights(environment, trackCurve, surfaceY);
+  addSponsorBoards(environment, trackCurve, surfaceY);
 }
 
-function addRaceGantry(parent, trackCurve, t) {
+function addRaceGantry(parent, trackCurve, t, surfaceY) {
   const frameMaterial = new THREE.MeshStandardMaterial({ color: 0xd7ded9, roughness: 0.62, metalness: 0.22 });
   const darkMaterial = new THREE.MeshStandardMaterial({ color: 0x11171c, roughness: 0.72, metalness: 0.12 });
   const lightMaterials = [0xff314f, 0xffce56, 0x50f28e].map(
@@ -37,7 +42,7 @@ function addRaceGantry(parent, trackCurve, t) {
 
   const gantry = new THREE.Group();
   gantry.name = 'start-gantry';
-  placeAtTrack(trackCurve, gantry, t, 0, 0, { y: TRACK_HEIGHT, rotationMode: 'track' });
+  placeAtTrack(trackCurve, gantry, t, 0, 0, { y: surfaceY(t), rotationMode: 'track' });
 
   const postGeometry = new THREE.BoxGeometry(0.24, 3.1, 0.24);
   const crossGeometry = new THREE.BoxGeometry(10.8, 0.34, 0.38);
@@ -70,10 +75,10 @@ function addRaceGantry(parent, trackCurve, t) {
   parent.add(gantry);
 }
 
-function addPitComplex(parent, trackCurve, t, side, lateral) {
+function addPitComplex(parent, trackCurve, t, side, lateral, surfaceY) {
   const group = new THREE.Group();
   group.name = 'pit-garage-row';
-  placeAtTrack(trackCurve, group, t, side, lateral, { y: TRACK_HEIGHT - 0.05, rotationMode: 'side' });
+  placeAtTrack(trackCurve, group, t, side, lateral, { y: surfaceY(t, -0.05), rotationMode: 'side' });
 
   const padMaterial = new THREE.MeshStandardMaterial({ color: 0x25313a, roughness: 0.86, metalness: 0.02 });
   const garageMaterial = new THREE.MeshStandardMaterial({ color: 0xced4d2, roughness: 0.74, metalness: 0.08 });
@@ -109,10 +114,10 @@ function addPitComplex(parent, trackCurve, t, side, lateral) {
   parent.add(group);
 }
 
-function addGrandstand(parent, trackCurve, t, side, lateral) {
+function addGrandstand(parent, trackCurve, t, side, lateral, surfaceY) {
   const group = new THREE.Group();
   group.name = 'trackside-grandstand';
-  placeAtTrack(trackCurve, group, t, side, lateral, { y: TRACK_HEIGHT - 0.05, rotationMode: 'side' });
+  placeAtTrack(trackCurve, group, t, side, lateral, { y: surfaceY(t, -0.05), rotationMode: 'side' });
 
   const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x343f46, roughness: 0.82, metalness: 0.04 });
   const benchMaterial = new THREE.MeshStandardMaterial({ color: 0xb9c0bd, roughness: 0.72, metalness: 0.1 });
@@ -169,11 +174,11 @@ function addGrandstand(parent, trackCurve, t, side, lateral) {
   parent.add(group);
 }
 
-function addVendorVillage(parent, trackCurve, t, side, lateral, forward = -1.6) {
+function addVendorVillage(parent, trackCurve, t, side, lateral, forward = -1.6, surfaceY) {
   const group = new THREE.Group();
   group.name = 'vendor-village';
   placeAtTrack(trackCurve, group, t, side, lateral, {
-    y: TRACK_HEIGHT - 0.045,
+    y: surfaceY(t, -0.045),
     rotationMode: 'side',
     forward,
   });
@@ -243,10 +248,10 @@ function createEventTent({ canopyMaterial, poleMaterial, counterMaterial }) {
   return tent;
 }
 
-function addServiceVehicles(parent, trackCurve, t, side, lateral) {
+function addServiceVehicles(parent, trackCurve, t, side, lateral, surfaceY) {
   const group = new THREE.Group();
   group.name = 'paddock-service-vehicles';
-  placeAtTrack(trackCurve, group, t, side, lateral, { y: TRACK_HEIGHT, rotationMode: 'side' });
+  placeAtTrack(trackCurve, group, t, side, lateral, { y: surfaceY(t), rotationMode: 'side' });
 
   const bodyMaterials = [0xf5f0d7, 0x2d7fd6].map(
     (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.74, metalness: 0.04 }),
@@ -284,7 +289,7 @@ function addServiceVehicles(parent, trackCurve, t, side, lateral) {
   parent.add(group);
 }
 
-function addMarshalPosts(parent, trackCurve) {
+function addMarshalPosts(parent, trackCurve, surfaceY) {
   const poleMaterial = new THREE.MeshStandardMaterial({ color: 0xe6e2d5, roughness: 0.62, metalness: 0.08 });
   const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x39444a, roughness: 0.8 });
   const flagMaterials = [0xffce56, 0x55dd8a, 0xe14f62].map(
@@ -293,7 +298,7 @@ function addMarshalPosts(parent, trackCurve) {
 
   placements.trackRelative.marshalPosts.forEach(({ t, side, lateral }, index) => {
     const post = new THREE.Group();
-    placeAtTrack(trackCurve, post, t, side, lateral, { y: TRACK_HEIGHT, rotationMode: 'side' });
+    placeAtTrack(trackCurve, post, t, side, lateral, { y: surfaceY(t), rotationMode: 'side' });
 
     const base = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.18, 0.9), platformMaterial);
     base.position.y = 0.09;
@@ -314,14 +319,15 @@ function addMarshalPosts(parent, trackCurve) {
   });
 }
 
-function addTrackLights(parent, trackCurve) {
+function addTrackLights(parent, trackCurve, surfaceY) {
   const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x667178, roughness: 0.56, metalness: 0.24 });
   const lampMaterial = new THREE.MeshBasicMaterial({ color: 0xfff1c4, transparent: true, opacity: 0.76 });
 
   for (let i = 0; i < 8; i += 1) {
     const side = i % 2 === 0 ? 1 : -1;
     const light = new THREE.Group();
-    placeAtTrack(trackCurve, light, (i / 8 + 0.06) % 1, side, 7.3, { y: TRACK_HEIGHT, rotationMode: 'side' });
+    const t = (i / 8 + 0.06) % 1;
+    placeAtTrack(trackCurve, light, t, side, 7.3, { y: surfaceY(t), rotationMode: 'side' });
 
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 3.4, 8), poleMaterial);
     pole.position.y = 1.7;
@@ -341,7 +347,7 @@ function addTrackLights(parent, trackCurve) {
   }
 }
 
-function addSponsorBoards(parent, trackCurve) {
+function addSponsorBoards(parent, trackCurve, surfaceY) {
   const boardMaterials = [0xf4f1e8, 0xffce56, 0xe5485f, 0x58a2f0].map(
     (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.04 }),
   );
@@ -350,8 +356,9 @@ function addSponsorBoards(parent, trackCurve) {
   for (let i = 0; i < 18; i += 1) {
     const side = i % 2 === 0 ? 1 : -1;
     const board = new THREE.Group();
-    placeAtTrack(trackCurve, board, (i / 18 + 0.025) % 1, side, 4.9 + (i % 3) * 0.35, {
-      y: TRACK_HEIGHT + 0.18,
+    const t = (i / 18 + 0.025) % 1;
+    placeAtTrack(trackCurve, board, t, side, 4.9 + (i % 3) * 0.35, {
+      y: surfaceY(t, 0.18),
       rotationMode: 'side',
     });
 

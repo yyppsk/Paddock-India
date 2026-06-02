@@ -1,6 +1,6 @@
-# Real Track Model
+# Real Track Models
 
-Version 2 currently loads the downloaded model package from:
+Version 2 loads the downloaded model package from:
 
 ```text
 public/models/real track/source/track.glb
@@ -12,7 +12,21 @@ The original downloaded folder name is kept intact so any embedded or sibling te
 /models/real%20track/source/track.glb
 ```
 
-Current limitation: this imported circuit model is not the same Spa route used by the scroll-driven car path. Version 2 therefore renders the real GLB as the real-model track variation while keeping the smooth Spa drive path visible for the cars. To make the cars drive exactly on this imported model, the next step is to add or derive a matching centerline/path for the GLB.
+Version 2 now hides the procedural Spa road and derives the car route from the imported model's `road` mesh using ordered road vertices.
+
+Version 3 loads the test model from:
+
+```text
+public/models/real track 2/nurburgring_race_driver_grid_ds.glb
+```
+
+The Vite URL is:
+
+```text
+/models/real%20track%202/nurburgring_race_driver_grid_ds.glb
+```
+
+Version 3 also hides the procedural road. It derives an open test route from uppercase `Track...` mesh chunks in the imported model. This is good enough for a local test page, but the highest-quality future improvement would be a hand-authored centerline or exported curve from the track source file.
 
 Suggested free candidates to try:
 

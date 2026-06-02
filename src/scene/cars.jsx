@@ -6,6 +6,10 @@ import { emitExhaustSmoke, updateSparks } from './effects.jsx';
 import { getSpaElevation } from './track.jsx';
 import { smoothPulse } from './trackFrame.js';
 
+function getProceduralSurfaceY(t) {
+  return TRACK_HEIGHT + getSpaElevation(t);
+}
+
 export function loadRaceCarModel({ car, scene, companionCars }) {
   const dracoLoader = new DRACOLoader();
   dracoLoader.setDecoderPath('/draco/');
@@ -30,18 +34,30 @@ export function loadRaceCarModel({ car, scene, companionCars }) {
   );
 }
 
-export function updateRaceCar({ trackCurve, car, t, delta, progress, easedProgress, sparks, camera, smokeState }) {
+export function updateRaceCar({
+  trackCurve,
+  car,
+  t,
+  delta,
+  progress,
+  easedProgress,
+  sparks,
+  camera,
+  smokeState,
+  getSurfaceY = getProceduralSurfaceY,
+}) {
   if (!trackCurve || !car) {
     return;
   }
 
-  const carPoint = trackCurve.getPointAt(t % 1);
-  const tangent = trackCurve.getTangentAt(t % 1).normalize();
+  const trackT = t % 1;
+  const carPoint = trackCurve.getPointAt(trackT);
+  const tangent = trackCurve.getTangentAt(trackT).normalize();
   const chicaneEnergy = smoothPulse(t, CHICANE_START, 0.08);
-  const elevation = getSpaElevation(t % 1);
+  const surfaceY = getSurfaceY(trackT, carPoint);
 
   car.position.copy(carPoint);
-  car.position.y = TRACK_HEIGHT + elevation + CAR_RIDE_HEIGHT + Math.sin(t * Math.PI * 16) * 0.025 + chicaneEnergy * 0.1;
+  car.position.y = surfaceY + CAR_RIDE_HEIGHT + Math.sin(t * Math.PI * 16) * 0.025 + chicaneEnergy * 0.1;
   car.rotation.y = Math.atan2(tangent.x, tangent.z);
   car.rotation.z = THREE.MathUtils.damp(car.rotation.z, Math.sin(t * Math.PI * 22) * 0.04 * chicaneEnergy, 6, delta);
   car.rotation.x = THREE.MathUtils.damp(car.rotation.x, -0.04 - chicaneEnergy * 0.06, 5, delta);
@@ -49,28 +65,34 @@ export function updateRaceCar({ trackCurve, car, t, delta, progress, easedProgre
   const speedGlow = THREE.MathUtils.clamp((progress - easedProgress) * 26, 0, 1);
   car.scale.setScalar(1 + speedGlow * 0.05);
 
-  updateSparks({ sparks, carPoint, chicaneEnergy, elevation });
+  updateSparks({ sparks, carPoint: car.position, chicaneEnergy, surfaceY });
   emitExhaustSmoke({ smokeState, camera, carPoint: car.position, tangent, delta, chicaneEnergy });
 }
 
-export function updateCompanionCars({ trackCurve, companionCars, t, delta }) {
+export function updateCompanionCars({
+  trackCurve,
+  companionCars,
+  t,
+  delta,
+  getSurfaceY = getProceduralSurfaceY,
+  spacingScale = 1,
+}) {
   if (!trackCurve || !companionCars.length) {
     return;
   }
 
   companionCars.forEach(({ group, config }, index) => {
-    const carT = (t + config.offset + 1) % 1;
+    const carT = (t + config.offset * spacingScale + 1) % 1;
     const point = trackCurve.getPointAt(carT);
     const tangent = trackCurve.getTangentAt(carT).normalize();
     const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
     const chicaneEnergy = smoothPulse(carT, CHICANE_START, 0.09);
-    const elevation = getSpaElevation(carT);
+    const surfaceY = getSurfaceY(carT, point);
     const laneDrift = Math.sin((t + index * 0.21) * Math.PI * 2) * 0.12;
     const targetPosition = point.clone().add(normal.multiplyScalar(config.laneOffset + laneDrift));
 
     targetPosition.y =
-      TRACK_HEIGHT + CAR_RIDE_HEIGHT + Math.sin((t + index * 0.13) * Math.PI * 14) * 0.018 + chicaneEnergy * 0.045;
-    targetPosition.y += elevation;
+      surfaceY + CAR_RIDE_HEIGHT + Math.sin((t + index * 0.13) * Math.PI * 14) * 0.018 + chicaneEnergy * 0.045;
     group.position.lerp(targetPosition, 1 - Math.exp(-delta * 8));
     group.rotation.y = Math.atan2(tangent.x, tangent.z);
     group.rotation.z = THREE.MathUtils.damp(

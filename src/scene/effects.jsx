@@ -3,7 +3,11 @@ import { CHICANE_START, SMOKE_PARTICLE_COUNT, TRACK_HEIGHT } from './constants.j
 import { getSpaElevation } from './track.jsx';
 import { smoothPulse } from './trackFrame.js';
 
-export function createTrackDetails({ scene, trackCurve, tireStacks, sparks }) {
+function getProceduralSurfaceY(t) {
+  return TRACK_HEIGHT + getSpaElevation(t);
+}
+
+export function createTrackDetails({ scene, trackCurve, tireStacks, sparks, getSurfaceY = getProceduralSurfaceY }) {
   const stackGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.42, 16);
   const stackMaterial = new THREE.MeshStandardMaterial({ color: 0x090909, roughness: 0.85 });
   const sparkMaterial = new THREE.MeshBasicMaterial({ color: 0xffc845, transparent: true, opacity: 0.9 });
@@ -15,7 +19,7 @@ export function createTrackDetails({ scene, trackCurve, tireStacks, sparks }) {
     const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
     const stack = new THREE.Mesh(stackGeometry, stackMaterial);
     stack.position.copy(point).add(normal.multiplyScalar(i % 2 === 0 ? 3.8 : -3.8));
-    stack.position.y = TRACK_HEIGHT + getSpaElevation(t) + 0.36;
+    stack.position.y = getSurfaceY(t, point) + 0.36;
     stack.rotation.z = Math.PI / 2;
     stack.castShadow = true;
     tireStacks.push(stack);
@@ -145,7 +149,7 @@ export function updateSceneDetails({ curbs, tireStacks, raycaster, pointer, came
   }
 }
 
-export function updateSparks({ sparks, carPoint, chicaneEnergy, elevation = 0 }) {
+export function updateSparks({ sparks, carPoint, chicaneEnergy, surfaceY = TRACK_HEIGHT }) {
   for (let i = 0; i < sparks.length; i += 1) {
     const spark = sparks[i];
     const active = chicaneEnergy > 0.4 && i / sparks.length < chicaneEnergy;
@@ -155,7 +159,7 @@ export function updateSparks({ sparks, carPoint, chicaneEnergy, elevation = 0 })
       spark.position.copy(carPoint);
       spark.position.x += side * (0.8 + Math.random() * 0.25);
       spark.position.z -= 0.7 + Math.random() * 1.5;
-      spark.position.y = TRACK_HEIGHT + elevation + 0.12 + Math.random() * 0.36;
+      spark.position.y = surfaceY + 0.12 + Math.random() * 0.36;
       spark.material.opacity = 0.25 + Math.random() * 0.75;
     }
   }

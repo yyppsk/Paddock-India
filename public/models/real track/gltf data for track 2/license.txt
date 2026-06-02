@@ -1,0 +1,8 @@
+Model Information:
+* title:	Race Track (23mb glb)
+* source:	https://sketchfab.com/3d-models/race-track-23mb-glb-1d3a0a5a7f5c48ecbc8ff967ec36e6e5
+* author:	cemal (https://sketchfab.com/cemalozcan)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works
