@@ -293,7 +293,9 @@ function updateDebugState() {
       ? {
           visible: lighting.streetLights.group.visible,
           glows: lighting.streetLights.glowSprites.length,
+          pools: lighting.streetLights.lightPools.length,
           pointLights: lighting.streetLights.pointLights.length,
+          spotLights: lighting.streetLights.spotLights.length,
         }
       : null,
   };

@@ -73,7 +73,9 @@ export const ENVIRONMENT_PRESETS = {
     sunIntensity: 4.25,
     trackGlowIntensity: 8,
     streetLightIntensity: 0,
+    streetLightSpotIntensity: 0,
     streetLightGlowOpacity: 0,
+    streetLightPoolOpacity: 0,
     ground: 0x405643,
     gridMajor: 0x7f9a83,
     gridMinor: 0x526553,
@@ -88,8 +90,10 @@ export const ENVIRONMENT_PRESETS = {
     sunColor: 0xffe5c2,
     sunIntensity: 3.5,
     trackGlowIntensity: 45,
-    streetLightIntensity: 10,
+    streetLightIntensity: 14,
+    streetLightSpotIntensity: 18,
     streetLightGlowOpacity: 0.62,
+    streetLightPoolOpacity: 0.34,
     ground: 0x23332a,
     gridMajor: 0x3f5346,
     gridMinor: 0x2e3a33,
@@ -126,8 +130,16 @@ function updateStreetLights(streetLights, preset) {
     light.intensity = preset.streetLightIntensity;
   }
 
+  for (const light of streetLights.spotLights ?? []) {
+    light.intensity = preset.streetLightSpotIntensity;
+  }
+
   for (const glow of streetLights.glowSprites ?? []) {
     glow.material.opacity = preset.streetLightGlowOpacity;
+  }
+
+  for (const pool of streetLights.lightPools ?? []) {
+    pool.material.opacity = preset.streetLightPoolOpacity;
   }
 }
 

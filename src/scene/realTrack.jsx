@@ -42,6 +42,7 @@ export const REAL_TRACK_MODELS = {
     streetLightMinY: 5.2,
     streetLightVertexStride: 4,
     streetLightMaxPointLights: 18,
+    streetLightPoolSize: 13,
     minRoutePoints: 32,
   },
 };
@@ -136,8 +137,22 @@ function createStreetLightRig(model, config) {
 
   const clusters = collectStreetLightClusters(model, config);
   const glowTexture = createStreetLightGlowTexture();
+  const poolTexture = createStreetLightPoolTexture();
+  const poolGeometry = new THREE.PlaneGeometry(1, 1);
+  const poolMaterial = new THREE.MeshBasicMaterial({
+    map: poolTexture,
+    color: 0xffb84a,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.AdditiveBlending,
+  });
+  const surfaceMeshes = collectStreetLightSurfaceMeshes(model);
   const glowSprites = [];
+  const lightPools = [];
   const pointLights = [];
+  const spotLights = [];
   const pointLightClusters = new Set(
     [...clusters]
       .sort((a, b) => b.count - a.count)
@@ -147,6 +162,7 @@ function createStreetLightRig(model, config) {
   for (const cluster of clusters) {
     const position = cluster.center.clone();
     position.y = cluster.maxY + 0.28;
+    const poolPosition = getStreetLightSurfacePoint(position, surfaceMeshes);
 
     const glow = new THREE.Sprite(
       new THREE.SpriteMaterial({
@@ -165,16 +181,37 @@ function createStreetLightRig(model, config) {
     glowSprites.push(glow);
     group.add(glow);
 
+    const pool = new THREE.Mesh(poolGeometry, poolMaterial);
+    pool.name = "street-light-pool";
+    pool.position.copy(poolPosition);
+    pool.rotation.x = -Math.PI / 2;
+    pool.scale.setScalar(config.streetLightPoolSize ?? 13);
+    pool.renderOrder = 2;
+    lightPools.push(pool);
+    group.add(pool);
+
     if (pointLightClusters.has(cluster)) {
       const light = new THREE.PointLight(0xffb84a, 0, 24, 2.1);
       light.name = "street-light-point";
       light.position.copy(position);
       pointLights.push(light);
       group.add(light);
+
+      const target = new THREE.Object3D();
+      target.name = "street-light-spot-target";
+      target.position.copy(poolPosition);
+
+      const spotLight = new THREE.SpotLight(0xffba55, 0, 32, 0.62, 0.7, 2);
+      spotLight.name = "street-light-spot";
+      spotLight.position.copy(position);
+      spotLight.target = target;
+      spotLight.castShadow = false;
+      spotLights.push(spotLight);
+      group.add(target, spotLight);
     }
   }
 
-  return { group, glowSprites, pointLights };
+  return { group, glowSprites, lightPools, pointLights, spotLights };
 }
 
 function collectStreetLightClusters(model, config) {
@@ -229,6 +266,49 @@ function collectStreetLightClusters(model, config) {
     .sort((a, b) => a.center.z - b.center.z || a.center.x - b.center.x);
 }
 
+function collectStreetLightSurfaceMeshes(model) {
+  const surfaceMeshes = [];
+
+  model.traverse((child) => {
+    if (!child.isMesh || !child.geometry?.attributes?.position) {
+      return;
+    }
+
+    const name = child.name ?? "";
+    const materialName = getMaterialName(child);
+    const isSurface = /(road|grass|sand|bluebump|brick|stone|step)/i.test(`${name} ${materialName}`);
+    const isObstacle = /(light|pole|pale|wall|fence|tent|crane|tire|window|wood|guard|desk)/i.test(
+      `${name} ${materialName}`,
+    );
+
+    if (isSurface && !isObstacle) {
+      surfaceMeshes.push(child);
+    }
+  });
+
+  return surfaceMeshes;
+}
+
+function getStreetLightSurfacePoint(position, surfaceMeshes) {
+  if (!surfaceMeshes.length) {
+    return position.clone().setY(Math.max(0.06, position.y - 6));
+  }
+
+  const raycaster = new THREE.Raycaster(
+    position.clone().add(new THREE.Vector3(0, 2, 0)),
+    new THREE.Vector3(0, -1, 0),
+    0,
+    30,
+  );
+  const hits = raycaster.intersectObjects(surfaceMeshes, false);
+
+  if (!hits.length) {
+    return position.clone().setY(Math.max(0.06, position.y - 6));
+  }
+
+  return hits[0].point.clone().add(new THREE.Vector3(0, 0.055, 0));
+}
+
 function createStreetLightGlowTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 96;
@@ -239,6 +319,25 @@ function createStreetLightGlowTexture() {
   gradient.addColorStop(0, "rgba(255, 233, 166, 0.9)");
   gradient.addColorStop(0.28, "rgba(255, 190, 86, 0.36)");
   gradient.addColorStop(1, "rgba(255, 170, 42, 0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function createStreetLightPoolTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 160;
+  canvas.height = 160;
+  const context = canvas.getContext("2d");
+  const gradient = context.createRadialGradient(80, 80, 2, 80, 80, 76);
+
+  gradient.addColorStop(0, "rgba(255, 214, 118, 0.58)");
+  gradient.addColorStop(0.34, "rgba(255, 181, 64, 0.24)");
+  gradient.addColorStop(0.7, "rgba(255, 168, 48, 0.08)");
+  gradient.addColorStop(1, "rgba(255, 168, 48, 0)");
   context.fillStyle = gradient;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
