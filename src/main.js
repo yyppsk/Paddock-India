@@ -94,6 +94,8 @@ async function init() {
   if (realTrack.loaded && realTrack.driveCurve) {
     trackCurve = realTrack.driveCurve;
     getSurfaceY = realTrack.getSurfaceY ?? getRealSurfaceY;
+    lighting.streetLights = realTrack.streetLights;
+    applyEnvironmentMode(environmentMode);
     updateTrackVersionStatus('real-loaded', realTrack);
   } else {
     updateTrackVersionStatus('real-missing', realTrack);
@@ -287,6 +289,13 @@ function updateDebugState() {
       y: Number(camera.position.y.toFixed(2)),
       z: Number(camera.position.z.toFixed(2)),
     },
+    streetLights: lighting?.streetLights
+      ? {
+          visible: lighting.streetLights.group.visible,
+          glows: lighting.streetLights.glowSprites.length,
+          pointLights: lighting.streetLights.pointLights.length,
+        }
+      : null,
   };
 }
 

@@ -36,6 +36,12 @@ export const REAL_TRACK_MODELS = {
         offset: [-4.8, 0],
       },
     ],
+    streetLightMeshPattern: /^lights$/i,
+    streetLightClusterDistance: 7,
+    streetLightMinSamples: 18,
+    streetLightMinY: 5.2,
+    streetLightVertexStride: 4,
+    streetLightMaxPointLights: 18,
     minRoutePoints: 32,
   },
 };
@@ -60,8 +66,12 @@ export async function loadRealTrackModel({ scene, version = "real-model" }) {
     fitRealTrack(model, config);
     model.updateMatrixWorld(true);
     const route = createDriveRoute(model, config);
+    const streetLights = createStreetLightRig(model, config);
     scene.add(model);
-    return { loaded: true, model, config, ...route };
+    if (streetLights.group.children.length) {
+      scene.add(streetLights.group);
+    }
+    return { loaded: true, model, config, streetLights, ...route };
   } catch (error) {
     console.info(`Real track model not loaded from ${config.path}.`, error);
     addRealTrackPlaceholder(scene);
@@ -71,6 +81,7 @@ export async function loadRealTrackModel({ scene, version = "real-model" }) {
       config,
       driveCurve: null,
       routeMethod: "missing",
+      streetLights: null,
     };
   }
 }
@@ -116,6 +127,124 @@ function fitRealTrack(model, config) {
 
   const fittedBox = new THREE.Box3().setFromObject(model);
   model.position.y -= fittedBox.min.y + config.groundInset;
+}
+
+function createStreetLightRig(model, config) {
+  const group = new THREE.Group();
+  group.name = "street-light-night-rig";
+  group.visible = false;
+
+  const clusters = collectStreetLightClusters(model, config);
+  const glowTexture = createStreetLightGlowTexture();
+  const glowSprites = [];
+  const pointLights = [];
+  const pointLightClusters = new Set(
+    [...clusters]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, config.streetLightMaxPointLights ?? 18),
+  );
+
+  for (const cluster of clusters) {
+    const position = cluster.center.clone();
+    position.y = cluster.maxY + 0.28;
+
+    const glow = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: glowTexture,
+        color: 0xffc766,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: true,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    glow.name = "street-light-glow";
+    glow.position.copy(position);
+    glow.scale.set(4.8, 4.8, 1);
+    glowSprites.push(glow);
+    group.add(glow);
+
+    if (pointLightClusters.has(cluster)) {
+      const light = new THREE.PointLight(0xffb84a, 0, 24, 2.1);
+      light.name = "street-light-point";
+      light.position.copy(position);
+      pointLights.push(light);
+      group.add(light);
+    }
+  }
+
+  return { group, glowSprites, pointLights };
+}
+
+function collectStreetLightClusters(model, config) {
+  const pattern = config.streetLightMeshPattern ?? /^lights$/i;
+  const minY = config.streetLightMinY ?? 5.2;
+  const stride = config.streetLightVertexStride ?? 4;
+  const clusterDistance = config.streetLightClusterDistance ?? 7;
+  const clusterDistanceSquared = clusterDistance * clusterDistance;
+  const clusters = [];
+
+  model.traverse((child) => {
+    if (!child.isMesh || !pattern.test(child.name) || !child.geometry?.attributes?.position) {
+      return;
+    }
+
+    const position = child.geometry.attributes.position;
+    for (let i = 0; i < position.count; i += stride) {
+      const point = new THREE.Vector3()
+        .fromBufferAttribute(position, i)
+        .applyMatrix4(child.matrixWorld);
+
+      if (point.y < minY) {
+        continue;
+      }
+
+      let nearestCluster = null;
+      let nearestDistance = Infinity;
+
+      for (const cluster of clusters) {
+        const distance = (point.x - cluster.center.x) ** 2 + (point.z - cluster.center.z) ** 2;
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestCluster = cluster;
+        }
+      }
+
+      if (nearestCluster && nearestDistance <= clusterDistanceSquared) {
+        nearestCluster.center
+          .multiplyScalar(nearestCluster.count)
+          .add(point)
+          .multiplyScalar(1 / (nearestCluster.count + 1));
+        nearestCluster.maxY = Math.max(nearestCluster.maxY, point.y);
+        nearestCluster.count += 1;
+      } else {
+        clusters.push({ center: point.clone(), maxY: point.y, count: 1 });
+      }
+    }
+  });
+
+  return clusters
+    .filter((cluster) => cluster.count >= (config.streetLightMinSamples ?? 18))
+    .sort((a, b) => a.center.z - b.center.z || a.center.x - b.center.x);
+}
+
+function createStreetLightGlowTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 96;
+  canvas.height = 96;
+  const context = canvas.getContext("2d");
+  const gradient = context.createRadialGradient(48, 48, 3, 48, 48, 46);
+
+  gradient.addColorStop(0, "rgba(255, 233, 166, 0.9)");
+  gradient.addColorStop(0.28, "rgba(255, 190, 86, 0.36)");
+  gradient.addColorStop(1, "rgba(255, 170, 42, 0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 function createDriveRoute(model, config) {

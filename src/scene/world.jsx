@@ -72,6 +72,8 @@ export const ENVIRONMENT_PRESETS = {
     sunColor: 0xfff1d2,
     sunIntensity: 4.25,
     trackGlowIntensity: 8,
+    streetLightIntensity: 0,
+    streetLightGlowOpacity: 0,
     ground: 0x405643,
     gridMajor: 0x7f9a83,
     gridMinor: 0x526553,
@@ -86,6 +88,8 @@ export const ENVIRONMENT_PRESETS = {
     sunColor: 0xffe5c2,
     sunIntensity: 3.5,
     trackGlowIntensity: 45,
+    streetLightIntensity: 10,
+    streetLightGlowOpacity: 0.62,
     ground: 0x23332a,
     gridMajor: 0x3f5346,
     gridMinor: 0x2e3a33,
@@ -104,9 +108,27 @@ export function applyEnvironmentPreset({ mode, scene, renderer, lighting, terrai
   lighting.sun.color.setHex(preset.sunColor);
   lighting.sun.intensity = preset.sunIntensity;
   lighting.trackGlow.intensity = preset.trackGlowIntensity;
+  updateStreetLights(lighting.streetLights, preset);
 
   terrain.ground.material.color.setHex(preset.ground);
   setMaterialColor(terrain.grid.material, [preset.gridMajor, preset.gridMinor]);
+}
+
+function updateStreetLights(streetLights, preset) {
+  if (!streetLights?.group) {
+    return;
+  }
+
+  const lightsAreVisible = preset.streetLightIntensity > 0 || preset.streetLightGlowOpacity > 0;
+  streetLights.group.visible = lightsAreVisible;
+
+  for (const light of streetLights.pointLights ?? []) {
+    light.intensity = preset.streetLightIntensity;
+  }
+
+  for (const glow of streetLights.glowSprites ?? []) {
+    glow.material.opacity = preset.streetLightGlowOpacity;
+  }
 }
 
 function setMaterialColor(material, colors) {
