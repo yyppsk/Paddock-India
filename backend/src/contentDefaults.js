@@ -9,7 +9,7 @@ export const DEFAULT_GAME_OFFERINGS = [
   },
   {
     id: 'nfs-server',
-    name: 'NFS Server',
+    name: 'Need for Speed',
     kicker: 'Arcade racing',
     description: 'Fast lobbies, casual runs, and high-energy weekend rooms.',
     posterTone: 'amber',
@@ -52,8 +52,8 @@ export const DEFAULT_CONTENT_SECTIONS = [
     navLabel: 'Grid',
     navDetail: 'Start',
     eyebrow: 'Grid',
-    title: 'Start Grid',
-    body: 'Choose your racing room, line up with the community, and roll into the opening lap.',
+    title: 'Gaming Titles',
+    body: 'Choose your racing title and join the community for well-organized events.',
     sortOrder: 20,
     progress: 0.08,
     isNavItem: true,
@@ -216,10 +216,20 @@ function normalizeGameOffering(game, index) {
 
   return {
     id,
-    name: String(game.name || fallback?.name || '').trim(),
+    name: resolveGameName(game, id, fallback),
     kicker: String(game.kicker || fallback?.kicker || '').trim(),
     description: String(game.description || fallback?.description || '').trim(),
     posterTone: String(game.posterTone || fallback?.posterTone || 'scarlet').trim(),
     posterImage: String(game.posterImage || game.poster_image || fallback?.posterImage || '').trim(),
   };
+}
+
+function resolveGameName(game, id, fallback) {
+  const name = String(game.name || fallback?.name || '').trim();
+
+  if (id === 'nfs-server' && name === 'NFS Server') {
+    return 'Need for Speed';
+  }
+
+  return name;
 }

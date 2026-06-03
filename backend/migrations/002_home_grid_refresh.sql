@@ -10,8 +10,8 @@ WHERE slug = 'home'
 UPDATE content_sections
 SET
   eyebrow = 'Grid',
-  title = 'Start Grid',
-  body = 'Choose your racing room, line up with the community, and roll into the opening lap.',
+  title = 'Gaming Titles',
+  body = 'Choose your racing title and join the community for well-organized events.',
   settings = COALESCE(settings, '{}'::jsonb) || '{
     "tone": "race",
     "games": [
@@ -25,7 +25,7 @@ SET
       },
       {
         "id": "nfs-server",
-        "name": "NFS Server",
+        "name": "Need for Speed",
         "kicker": "Arcade racing",
         "description": "Fast lobbies, casual runs, and high-energy weekend rooms.",
         "posterTone": "amber",

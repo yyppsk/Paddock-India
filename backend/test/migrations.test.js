@@ -29,7 +29,7 @@ test('home and grid refresh migration only updates old seeded rows', async () =>
   assert.match(sql, /WHERE slug = 'grid'\s+AND title = 'Lights Out'/);
   assert.match(sql, /Paddock India/);
   assert.match(sql, /Assetto Corsa/);
-  assert.match(sql, /NFS Server/);
+  assert.match(sql, /Need for Speed/);
   assert.match(sql, /assetto-corsa\.webp/);
   assert.match(sql, /need-for-speed-unbound\.webp/);
 });
@@ -43,4 +43,14 @@ test('game poster migration enriches existing grid settings only', async () => {
   assert.match(sql, /nfs-server/);
   assert.match(sql, /assetto-corsa\.webp/);
   assert.match(sql, /need-for-speed-unbound\.webp/);
+});
+
+test('grid copy refresh migration updates existing grid title and game label', async () => {
+  const sql = await readFile(resolve('backend/migrations/004_grid_copy_refresh.sql'), 'utf8');
+
+  assert.match(sql, /Gaming Titles/);
+  assert.match(sql, /well-organized events/);
+  assert.match(sql, /Need for Speed/);
+  assert.match(sql, /WHERE slug = 'grid'/);
+  assert.match(sql, /NFS Server/);
 });

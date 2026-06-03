@@ -12,3 +12,5 @@ vite-dev.err
 paddockindia-*.log
 .env.local
 frontend/public/assets/images/paddockindia-ui-car.png
+frontend/public/assets/images/logos/Main Logo Files/
+frontend/public/assets/images/logos/Originals/

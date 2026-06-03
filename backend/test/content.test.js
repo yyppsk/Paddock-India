@@ -73,7 +73,7 @@ test('grid rows receive fallback game offerings when settings are missing', () =
   });
 
   assert.equal(section.settings.games.length, 4);
-  assert.equal(section.settings.games[1].name, 'NFS Server');
+  assert.equal(section.settings.games[1].name, 'Need for Speed');
   assert.equal(section.settings.games[1].posterImage, '/assets/images/games/need-for-speed-unbound.webp');
 });
 
@@ -101,4 +101,27 @@ test('grid rows enrich existing game settings with poster assets', () => {
   });
 
   assert.equal(section.settings.games[0].posterImage, '/assets/images/games/assetto-corsa.webp');
+});
+
+test('grid rows normalize old NFS Server labels to Need for Speed', () => {
+  const section = normalizeContentSection({
+    id: 'grid-id',
+    slug: 'grid',
+    panel_key: 'grid',
+    nav_label: 'Grid',
+    nav_detail: 'Start',
+    is_nav_item: true,
+    is_published: true,
+    progress: '0.08',
+    settings: {
+      games: [
+        {
+          id: 'nfs-server',
+          name: 'NFS Server',
+        },
+      ],
+    },
+  });
+
+  assert.equal(section.settings.games[0].name, 'Need for Speed');
 });

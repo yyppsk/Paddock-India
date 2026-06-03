@@ -663,7 +663,7 @@ function updateHud(t) {
 }
 
 function getSegmentName(t) {
-  return getActiveRouteStop(t)?.label || 'Start Grid';
+  return getActiveRouteStop(t)?.label || 'Gaming Titles';
 }
 
 function updateScrollState() {

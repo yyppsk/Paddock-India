@@ -75,7 +75,13 @@ function GameOfferings({ games }) {
   return (
     <aside className="game-offerings" aria-label="Racing games offered">
       {games.map((game, index) => (
-        <article className="game-card" data-has-poster={game.posterImage ? 'true' : 'false'} data-tone={game.posterTone || 'scarlet'} key={game.id || `${game.name}-${index}`}>
+        <article
+          className="game-card"
+          data-has-poster={game.posterImage ? 'true' : 'false'}
+          data-tone={game.posterTone || 'scarlet'}
+          key={game.id || `${game.name}-${index}`}
+          style={{ '--game-index': index }}
+        >
           <div className="game-card__poster" aria-hidden="true">
             <img src={game.posterImage || '/assets/images/paddockindia-ui-car-small.png'} alt="" loading="lazy" draggable="false" />
           </div>
