@@ -5,7 +5,7 @@ export function LoadingScreen() {
         <span className="loading-screen__lane"></span>
         <img
           className="loading-screen__car"
-          src="/assets/images/Asseto_cropped_UI_car_small.png"
+          src="/assets/images/paddockindia-ui-car-small.png"
           alt=""
           draggable="false"
         />

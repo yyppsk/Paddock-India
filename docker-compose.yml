@@ -1,14 +1,50 @@
+name: paddockindia
+
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-paddockindia}
+      POSTGRES_USER: ${POSTGRES_USER:-paddockindia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-paddockindia_password}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - paddockindia_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3001
-      DATABASE_URL: ${DATABASE_URL:-}
-      DATABASE_SSL: ${DATABASE_SSL:-}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-paddockindia}:${POSTGRES_PASSWORD:-paddockindia_password}@postgres:5432/${POSTGRES_DB:-paddockindia}}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
+      RUN_MIGRATIONS_ON_START: ${RUN_MIGRATIONS_ON_START:-true}
+      REQUIRE_DATABASE: ${REQUIRE_DATABASE:-false}
+      SUPER_ADMIN_EMAILS: ${SUPER_ADMIN_EMAILS:-}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-paddockindia_session}
+      CSRF_COOKIE_NAME: ${CSRF_COOKIE_NAME:-paddockindia_csrf}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      REQUIRE_SMTP: ${REQUIRE_SMTP:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_SEND_TIMEOUT_MS: ${SMTP_SEND_TIMEOUT_MS:-10000}
+      MAIL_FROM: ${MAIL_FROM:-Paddock India <no-reply@paddockindia.local>}
     ports:
       - "${APP_PORT:-3001}:3001"
     restart: unless-stopped
@@ -24,3 +60,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+
+volumes:
+  paddockindia_postgres_data:

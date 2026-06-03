@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { CONTACT_START, SOCIAL_START } from './scene/constants.js';
 import { loadRaceCarModel, setVehicleLightsEnabled, updateCompanionCars, updateRaceCar } from './scene/cars.jsx';
 import {
   createExhaustSmoke,
@@ -35,7 +34,6 @@ let weatherButtons = [];
 let windButton;
 let routeNav;
 let routeProgressValue;
-let routeNavButtons = [];
 
 let renderer;
 let scene;
@@ -102,7 +100,6 @@ function bindDomElements() {
   windButton = document.querySelector('[data-wind-toggle]');
   routeNav = document.querySelector('.track-nav');
   routeProgressValue = document.querySelector('#route-progress-value');
-  routeNavButtons = document.querySelectorAll('[data-route-progress]');
 }
 
 function resetRaceState() {
@@ -139,7 +136,7 @@ function cleanupRaceExperience() {
   cleanupCallbacks = [];
   cancelAnimationFrame(animationFrameId);
   renderer?.dispose();
-  delete window.__assetoDebug;
+  delete window.__paddockindiaDebug;
   document.body.removeAttribute('data-loading');
   activeCleanup = null;
 }
@@ -229,10 +226,12 @@ async function init() {
   addElementListener(windButton, 'click', () => {
     setWindEnabled(!windEnabled);
   });
-  routeNavButtons.forEach((button) => {
-    addElementListener(button, 'click', () => {
-      scrollToRaceProgress(Number(button.dataset.routeProgress));
-    });
+  addWindowListener('click', (event) => {
+    const routeButton = event.target.closest?.('[data-route-progress]');
+
+    if (routeButton) {
+      scrollToRaceProgress(Number(routeButton.dataset.routeProgress));
+    }
   });
 
   animationFrameId = requestAnimationFrame(animate);
@@ -257,17 +256,17 @@ function addElementListener(element, type, listener, options) {
 }
 
 function getInitialEnvironmentMode() {
-  const savedMode = window.localStorage?.getItem('asseto-environment-mode');
+  const savedMode = window.localStorage?.getItem('paddockindia-environment-mode');
   return ENVIRONMENT_MODES.has(savedMode) ? savedMode : DEFAULT_ENVIRONMENT_MODE;
 }
 
 function getInitialWeatherMode() {
-  const savedMode = window.localStorage?.getItem('asseto-weather-mode');
+  const savedMode = window.localStorage?.getItem('paddockindia-weather-mode');
   return WEATHER_MODES.has(savedMode) ? savedMode : DEFAULT_WEATHER_MODE;
 }
 
 function getInitialWindEnabled() {
-  return window.localStorage?.getItem('asseto-wind-enabled') === 'true';
+  return window.localStorage?.getItem('paddockindia-wind-enabled') === 'true';
 }
 
 function setEnvironmentMode(mode) {
@@ -276,7 +275,7 @@ function setEnvironmentMode(mode) {
   }
 
   environmentMode = mode;
-  window.localStorage?.setItem('asseto-environment-mode', environmentMode);
+  window.localStorage?.setItem('paddockindia-environment-mode', environmentMode);
   applyEnvironmentMode(environmentMode);
   updateEnvironmentControls();
 }
@@ -287,14 +286,14 @@ function setWeatherMode(mode) {
   }
 
   weatherMode = mode;
-  window.localStorage?.setItem('asseto-weather-mode', weatherMode);
+  window.localStorage?.setItem('paddockindia-weather-mode', weatherMode);
   document.body.dataset.weather = weatherMode;
   updateWeatherControls();
 }
 
 function setWindEnabled(value) {
   windEnabled = Boolean(value);
-  window.localStorage?.setItem('asseto-wind-enabled', String(windEnabled));
+  window.localStorage?.setItem('paddockindia-wind-enabled', String(windEnabled));
   document.body.dataset.wind = String(windEnabled);
   updateWeatherControls();
 }
@@ -436,7 +435,7 @@ function updateDebugState() {
     return;
   }
 
-  window.__assetoDebug = {
+  window.__paddockindiaDebug = {
     progress,
     easedProgress,
     car: car
@@ -528,10 +527,7 @@ function updateHud(t) {
 }
 
 function getSegmentName(t) {
-  if (t >= CONTACT_START) return 'Route Exit';
-  if (t >= SOCIAL_START) return 'Social Sector';
-  if (t >= 0.35) return 'Model Sector';
-  return 'Start Grid';
+  return getActiveRouteStop(t)?.label || 'Start Grid';
 }
 
 function updateScrollState() {
@@ -542,12 +538,18 @@ function updateScrollState() {
 }
 
 function updatePanels(t) {
-  document.body.dataset.stage = t >= CONTACT_START ? 'contact' : t >= SOCIAL_START ? 'social' : t >= 0.32 ? 'pace' : 'intro';
-  updateRouteNavigation(t);
+  const activeStop = getActiveRouteStop(t);
+  const activeStage = activeStop?.stage || 'home';
+  document.body.dataset.stage = activeStage;
+
+  document.querySelectorAll('[data-panel]').forEach((panel) => {
+    panel.dataset.active = String(panel.dataset.panel === activeStage);
+  });
+
+  updateRouteNavigation(t, activeStage);
 }
 
-function updateRouteNavigation(t) {
-  const activeStage = document.body.dataset.stage;
+function updateRouteNavigation(t, activeStage) {
   const clampedProgress = THREE.MathUtils.clamp(t, 0, 0.995);
 
   routeNav?.style.setProperty('--nav-progress-percent', `${(clampedProgress * 100).toFixed(1)}%`);
@@ -555,7 +557,7 @@ function updateRouteNavigation(t) {
     routeProgressValue.textContent = `${Math.round(clampedProgress * 100)}%`;
   }
 
-  routeNavButtons.forEach((button) => {
+  getRouteButtons().forEach((button) => {
     const stopProgress = Number(button.dataset.routeProgress);
     const isActive = button.dataset.routeStage === activeStage;
     const isCompleted = Number.isFinite(stopProgress) && stopProgress < clampedProgress && !isActive;
@@ -563,6 +565,31 @@ function updateRouteNavigation(t) {
     button.setAttribute('aria-current', String(isActive));
     button.dataset.routeState = isActive ? 'active' : isCompleted ? 'completed' : 'upcoming';
   });
+}
+
+function getRouteButtons() {
+  return [...document.querySelectorAll('[data-route-progress]')];
+}
+
+function getRouteStops() {
+  return getRouteButtons()
+    .map((button) => ({
+      stage: button.dataset.routeStage,
+      label: button.querySelector('strong')?.textContent || button.dataset.routeStage,
+      progress: Number(button.dataset.routeProgress),
+    }))
+    .filter((stop) => stop.stage && Number.isFinite(stop.progress))
+    .sort((left, right) => left.progress - right.progress);
+}
+
+function getActiveRouteStop(t) {
+  const stops = getRouteStops();
+  if (!stops.length) {
+    return null;
+  }
+
+  const clampedProgress = THREE.MathUtils.clamp(t, 0, 0.995);
+  return stops.reduce((active, stop) => (stop.progress <= clampedProgress + 0.005 ? stop : active), stops[0]);
 }
 
 function scrollToRaceProgress(targetProgress) {

@@ -1,5 +1,5 @@
 {
-  "name": "asseto-spa-scroll",
+  "name": "paddockindia-spa-scroll",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,14 +9,17 @@
     "dev:frontend": "vite --config frontend/vite.config.js --host 0.0.0.0",
     "dev:local": "node frontend/scripts/dev-server.mjs",
     "build": "vite build --config frontend/vite.config.js",
+    "migrate": "node backend/src/migrate.js",
     "start": "node backend/src/server.js",
-    "docker:build": "docker build -t asseto-spa-scroll ."
+    "test": "node --test backend/test/*.test.js",
+    "docker:build": "docker build -t paddockindia-spa-scroll ."
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.17.0",
+    "pg": "^8.21.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwind-merge": "^3.6.0",

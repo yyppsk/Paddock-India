@@ -9,3 +9,5 @@ screenshots/
 *-check.png
 vite-dev.log
 vite-dev.err
+.env.local
+frontend/public/assets/images/paddockindia-ui-car.png

@@ -1,4 +1,4 @@
-app = "asseto-spa-scroll"
+app = "paddockindia-spa-scroll"
 primary_region = "bom"
 
 [build]
@@ -7,10 +7,10 @@ primary_region = "bom"
 [env]
   NODE_ENV = "production"
   HOST = "0.0.0.0"
-  PORT = "3000"
+  PORT = "3001"
 
 [http_service]
-  internal_port = 3000
+  internal_port = 3001
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true

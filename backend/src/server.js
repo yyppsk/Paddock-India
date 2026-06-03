@@ -3,12 +3,15 @@ import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getPublicPostgresStatus } from './database.js';
+import { createApiHandler } from './api.js';
+import { addBaseHeaders, sendError, sendJson } from './http.js';
+import { runMigrations, shouldRunMigrationsOnStart } from './migrations.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const appDirectory = resolve(__dirname, '../public/app');
 const host = process.env.HOST || '0.0.0.0';
 const port = Number(process.env.PORT || 3000);
+const handleApiRequest = createApiHandler();
 
 const mimeTypes = new Map([
   ['.bin', 'application/octet-stream'],
@@ -42,39 +45,11 @@ const server = createServer(async (request, response) => {
     await serveFrontend(request, response);
   } catch (error) {
     console.error(error);
-    sendJson(response, 500, { ok: false, error: 'internal_server_error' });
+    sendError(response, error);
   }
 });
 
-server.listen(port, host, () => {
-  console.log(`Asseto server listening on http://${host}:${port}`);
-});
-
-async function handleApiRequest(request, response) {
-  const url = new URL(request.url, getRequestBaseUrl(request));
-
-  if (request.method === 'GET' && url.pathname === '/api/health') {
-    sendJson(response, 200, {
-      ok: true,
-      service: 'asseto-api',
-      environment: process.env.NODE_ENV || 'development',
-      uptime: Number(process.uptime().toFixed(2)),
-      postgres: getPublicPostgresStatus(),
-    });
-    return;
-  }
-
-  if (request.method === 'GET' && url.pathname === '/api/config') {
-    sendJson(response, 200, {
-      ok: true,
-      postgres: getPublicPostgresStatus(),
-      frontendServedBy: 'node',
-    });
-    return;
-  }
-
-  sendJson(response, 404, { ok: false, error: 'api_route_not_found' });
-}
+await startServer();
 
 async function serveFrontend(request, response) {
   const url = new URL(request.url, getRequestBaseUrl(request));
@@ -134,21 +109,30 @@ async function getFileStat(filePath) {
   }
 }
 
-function sendJson(response, statusCode, body) {
-  response.writeHead(statusCode, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-cache',
-  });
-  response.end(JSON.stringify(body));
-}
-
-function addBaseHeaders(response) {
-  response.setHeader('X-Content-Type-Options', 'nosniff');
-  response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-}
-
 function getRequestBaseUrl(request) {
   const protocol = request.headers['x-forwarded-proto'] || 'http';
   const hostHeader = request.headers['x-forwarded-host'] || request.headers.host || `localhost:${port}`;
   return `${protocol}://${hostHeader}`;
+}
+
+async function startServer() {
+  if (shouldRunMigrationsOnStart()) {
+    try {
+      const result = await runMigrations();
+
+      if (!result.skipped && result.applied.length) {
+        console.log(`Applied migrations: ${result.applied.join(', ')}`);
+      }
+    } catch (error) {
+      console.error('Migration startup failed:', error);
+
+      if (process.env.REQUIRE_DATABASE === 'true') {
+        throw error;
+      }
+    }
+  }
+
+  server.listen(port, host, () => {
+    console.log(`Paddock India server listening on http://${host}:${port}`);
+  });
 }

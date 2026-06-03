@@ -18,6 +18,7 @@ ENV HOST=0.0.0.0
 ENV PORT=3001
 
 COPY package.json ./
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/backend ./backend
 
 EXPOSE 3001
