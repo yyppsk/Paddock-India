@@ -1736,6 +1736,13 @@ body[data-environment="day"][data-stage="contact"]::before {
   opacity: 0.65;
 }
 
+.admin-card button:disabled,
+.content-editor button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}
+
 .auth-links {
   display: flex;
   flex-wrap: wrap;
@@ -1780,6 +1787,11 @@ body[data-environment="day"][data-stage="contact"]::before {
   align-items: start;
 }
 
+.admin-side-stack {
+  display: grid;
+  gap: 1rem;
+}
+
 .admin-card,
 .content-editor {
   border: 1px solid rgb(244 241 232 / 0.16);
@@ -1809,6 +1821,103 @@ body[data-environment="day"][data-stage="contact"]::before {
 .user-role-list {
   display: grid;
   gap: 0.75rem;
+}
+
+.system-settings-card {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.migration-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.migration-summary div {
+  min-height: 4.1rem;
+  display: grid;
+  align-content: center;
+  gap: 0.18rem;
+  padding: 0.75rem;
+  border: 1px solid rgb(244 241 232 / 0.14);
+  background:
+    radial-gradient(circle at 100% 0%, rgb(84 242 154 / 0.13), transparent 52%),
+    rgb(3 5 7 / 0.48);
+}
+
+.migration-summary span,
+.migration-history__header,
+.migration-history time {
+  color: #aeb8b1;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.migration-summary strong {
+  color: #fffaf0;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.migration-history {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.migration-history__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.migration-history__header svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: #ffce56;
+}
+
+.migration-history ol {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 16rem;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.migration-history li {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  gap: 0.16rem 0.55rem;
+  align-items: center;
+  padding: 0.55rem 0;
+  border-top: 1px solid rgb(244 241 232 / 0.1);
+}
+
+.migration-history li svg {
+  grid-row: 1 / span 2;
+  width: 1rem;
+  height: 1rem;
+  color: #54f29a;
+}
+
+.migration-history li span {
+  min-width: 0;
+  overflow: hidden;
+  color: #fffaf0;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.migration-history time {
+  text-transform: none;
 }
 
 .content-editor {

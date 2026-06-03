@@ -1,4 +1,4 @@
-import { LogOut, Plus, Save, Shield, Users } from 'lucide-react';
+import { CheckCircle2, Database, History, LogOut, PlayCircle, Plus, Save, Shield, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiRequest, navigate } from '../api.js';
 
@@ -12,6 +12,8 @@ export function AdminPanel() {
   const [user, setUser] = useState(null);
   const [sections, setSections] = useState([]);
   const [users, setUsers] = useState([]);
+  const [migrationStatus, setMigrationStatus] = useState(null);
+  const [migrationRunning, setMigrationRunning] = useState(false);
   const [status, setStatus] = useState('Loading admin panel...');
   const [error, setError] = useState('');
 
@@ -34,13 +36,17 @@ export function AdminPanel() {
           return;
         }
 
-        const content = await apiRequest('/api/admin/content');
-        const userList = session.user.isSuperAdmin ? await apiRequest('/api/admin/users') : { users: [] };
+        const [content, userList, migrations] = await Promise.all([
+          apiRequest('/api/admin/content'),
+          session.user.isSuperAdmin ? apiRequest('/api/admin/users') : Promise.resolve({ users: [] }),
+          session.user.isSuperAdmin ? apiRequest('/api/admin/system/migrations') : Promise.resolve(null),
+        ]);
 
         if (!alive) return;
         setUser(session.user);
         setSections(content.sections);
         setUsers(userList.users);
+        setMigrationStatus(migrations);
         setStatus('');
       } catch (requestError) {
         if (!alive) return;
@@ -128,6 +134,26 @@ export function AdminPanel() {
     }
   }
 
+  async function runMigrationsFromAdmin() {
+    setMigrationRunning(true);
+    setStatus('Running migrations...');
+    setError('');
+
+    try {
+      const result = await apiRequest('/api/admin/system/migrations/run', {
+        method: 'POST',
+        csrf: true,
+      });
+      setMigrationStatus(result);
+      setStatus(result.applied?.length ? `Applied ${result.applied.length} migration${result.applied.length === 1 ? '' : 's'}.` : 'Migrations are up to date.');
+    } catch (requestError) {
+      setError(readableError(requestError));
+      setStatus('');
+    } finally {
+      setMigrationRunning(false);
+    }
+  }
+
   async function logout() {
     await apiRequest('/api/auth/logout', { method: 'POST', csrf: true }).catch(() => null);
     navigate('/');
@@ -181,31 +207,34 @@ export function AdminPanel() {
           </div>
 
           {user.isSuperAdmin ? (
-            <div className="admin-card">
-              <div className="admin-card__header">
-                <div>
-                  <p className="eyebrow">Access</p>
-                  <h2>Roles</h2>
+            <div className="admin-side-stack">
+              <div className="admin-card">
+                <div className="admin-card__header">
+                  <div>
+                    <p className="eyebrow">Access</p>
+                    <h2>Roles</h2>
+                  </div>
+                  <Users aria-hidden="true" />
                 </div>
-                <Users aria-hidden="true" />
+                <div className="user-role-list">
+                  {users.map((entry) => (
+                    <article key={entry.id} className="user-role-row">
+                      <div>
+                        <strong>{entry.email}</strong>
+                        <span>{entry.displayName || 'No name set'}</span>
+                      </div>
+                      <select value={entry.role} onChange={(event) => changeRole(entry, event.target.value)}>
+                        {roleOptions.map((role) => (
+                          <option key={role.value} value={role.value}>
+                            {role.label}
+                          </option>
+                        ))}
+                      </select>
+                    </article>
+                  ))}
+                </div>
               </div>
-              <div className="user-role-list">
-                {users.map((entry) => (
-                  <article key={entry.id} className="user-role-row">
-                    <div>
-                      <strong>{entry.email}</strong>
-                      <span>{entry.displayName || 'No name set'}</span>
-                    </div>
-                    <select value={entry.role} onChange={(event) => changeRole(entry, event.target.value)}>
-                      {roleOptions.map((role) => (
-                        <option key={role.value} value={role.value}>
-                          {role.label}
-                        </option>
-                      ))}
-                    </select>
-                  </article>
-                ))}
-              </div>
+              <SystemSettings migrations={migrationStatus} onRunMigrations={runMigrationsFromAdmin} running={migrationRunning} />
             </div>
           ) : (
             <div className="admin-card">
@@ -217,6 +246,61 @@ export function AdminPanel() {
         </section>
       ) : null}
     </main>
+  );
+}
+
+function SystemSettings({ migrations, onRunMigrations, running }) {
+  const appliedHistory = migrations?.appliedHistory || [];
+  const pendingCount = Number(migrations?.pendingCount || 0);
+  const total = Number(migrations?.total || 0);
+
+  return (
+    <div className="admin-card system-settings-card">
+      <div className="admin-card__header">
+        <div>
+          <p className="eyebrow">System Settings</p>
+          <h2>Migrations</h2>
+        </div>
+        <Database aria-hidden="true" />
+      </div>
+
+      <div className="migration-summary">
+        <div>
+          <span>Applied</span>
+          <strong>{migrations ? `${migrations.appliedCount}/${total}` : '--'}</strong>
+        </div>
+        <div>
+          <span>Pending</span>
+          <strong>{migrations ? pendingCount : '--'}</strong>
+        </div>
+      </div>
+
+      <button type="button" disabled={!migrations || pendingCount === 0 || running} onClick={onRunMigrations}>
+        <PlayCircle aria-hidden="true" />
+        {running ? 'Running' : pendingCount ? 'Run Pending' : 'Up To Date'}
+      </button>
+
+      <div className="migration-history">
+        <div className="migration-history__header">
+          <History aria-hidden="true" />
+          <strong>Applied History</strong>
+        </div>
+
+        {appliedHistory.length ? (
+          <ol>
+            {appliedHistory.map((migration) => (
+              <li key={migration.version}>
+                <CheckCircle2 aria-hidden="true" />
+                <span>{migration.version}</span>
+                <time dateTime={migration.appliedAt || undefined}>{formatDateTime(migration.appliedAt)}</time>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p>{migrations ? 'No migrations have been applied yet.' : 'Loading migration history...'}</p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -327,4 +411,21 @@ function ContentEditor({ section, onChange, onSave }) {
 function readableError(error) {
   const label = String(error.message || '').replace(/_/g, ' ');
   return label ? label.charAt(0).toUpperCase() + label.slice(1) : 'Request failed.';
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return 'Not recorded';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Not recorded';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
 }

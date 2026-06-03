@@ -61,7 +61,7 @@ Copy `.env.example` into your deployment environment and set values there.
 PORT=3001
 APP_PORT=3001
 POSTGRES_DB=paddockindia
-POSTGRES_USER=userpaddockindiaprod
+POSTGRES_USER=paddockindia_local
 POSTGRES_PASSWORD=change-this-password
 POSTGRES_PORT=5432
 DATABASE_URL=
@@ -104,7 +104,7 @@ Or with Compose:
 
 ```bash
 docker compose up --build
-docker compose exec postgres psql -U userpaddockindiaprod -d paddockindia
+docker compose exec postgres psql -U paddockindia_local -d paddockindia
 ```
 
 ## Dokploy
@@ -117,7 +117,7 @@ HOST=0.0.0.0
 PORT=3001
 APP_PORT=3001
 POSTGRES_DB=paddockindia
-POSTGRES_USER=userpaddockindiaprod
+POSTGRES_USER=paddockindia_local
 POSTGRES_PASSWORD=<secure password>
 DATABASE_SSL=false
 RUN_MIGRATIONS_ON_START=true

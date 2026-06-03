@@ -15,6 +15,7 @@ import {
 import { createContentSection, listAdminContentSections, listPublicContentSections, updateContentSection } from './content.js';
 import { getPublicPostgresStatus } from './database.js';
 import { createHttpError, getRequestBaseUrl, readJsonBody, sendJson } from './http.js';
+import { listMigrationStatus, runMigrations } from './migrations.js';
 
 const AUTH_LIMIT = { limit: 20, windowMs: 10 * 60 * 1000 };
 const WRITE_LIMIT = { limit: 120, windowMs: 10 * 60 * 1000 };
@@ -115,7 +116,7 @@ async function handleAuthRequest(request, response, url) {
 }
 
 async function handleAdminRequest(request, response, url) {
-  const session = url.pathname.startsWith('/api/admin/users') ? await requireSuperAdmin(request) : await requireAdmin(request);
+  const session = needsSuperAdmin(url.pathname) ? await requireSuperAdmin(request) : await requireAdmin(request);
 
   if (!['GET', 'HEAD'].includes(request.method)) {
     enforceRateLimit(request, 'admin:write', WRITE_LIMIT);
@@ -146,6 +147,19 @@ async function handleAdminRequest(request, response, url) {
     return;
   }
 
+  if (request.method === 'GET' && url.pathname === '/api/admin/system/migrations') {
+    const status = await listMigrationStatus({ requireDatabase: true });
+    sendJson(response, 200, { ok: true, ...status });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/admin/system/migrations/run') {
+    const result = await runMigrations({ requireDatabase: true });
+    const status = await listMigrationStatus({ requireDatabase: true });
+    sendJson(response, 200, { ok: true, applied: result.applied, ...status });
+    return;
+  }
+
   const userRoleMatch = url.pathname.match(/^\/api\/admin\/users\/([0-9a-f-]{36})\/role$/i);
 
   if (userRoleMatch && request.method === 'PATCH') {
@@ -156,6 +170,10 @@ async function handleAdminRequest(request, response, url) {
   }
 
   sendJson(response, 404, { ok: false, error: 'admin_route_not_found' });
+}
+
+function needsSuperAdmin(pathname) {
+  return pathname.startsWith('/api/admin/users') || pathname.startsWith('/api/admin/system/');
 }
 
 function enforceRateLimit(request, bucketName, { limit, windowMs }) {

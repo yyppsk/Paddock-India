@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import test from 'node:test';
+import { listMigrationStatus } from '../src/migrations.js';
 
 test('auth and content migration creates required tables and preserves seeded content edits', async () => {
   const sql = await readFile(resolve('backend/migrations/001_auth_content.sql'), 'utf8');
@@ -53,4 +54,35 @@ test('grid copy refresh migration updates existing grid title and game label', a
   assert.match(sql, /Need for Speed/);
   assert.match(sql, /WHERE slug = 'grid'/);
   assert.match(sql, /NFS Server/);
+});
+
+test('migration status can list local migration files without a database', async () => {
+  const previous = {
+    DATABASE_URL: process.env.DATABASE_URL,
+    POSTGRES_URL: process.env.POSTGRES_URL,
+    POSTGRES_CONNECTION_STRING: process.env.POSTGRES_CONNECTION_STRING,
+    PG_CONNECTION_STRING: process.env.PG_CONNECTION_STRING,
+  };
+
+  delete process.env.DATABASE_URL;
+  delete process.env.POSTGRES_URL;
+  delete process.env.POSTGRES_CONNECTION_STRING;
+  delete process.env.PG_CONNECTION_STRING;
+
+  try {
+    const status = await listMigrationStatus();
+
+    assert.equal(status.skipped, true);
+    assert.equal(status.appliedCount, 0);
+    assert.equal(status.pendingCount, status.total);
+    assert.ok(status.migrations.some((migration) => migration.version === '001_auth_content.sql'));
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
 });
