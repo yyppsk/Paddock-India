@@ -5,26 +5,37 @@ import { apiRequest, navigate } from '../api.js';
 const modeCopy = {
   login: {
     title: 'Sign In',
-    body: 'Access your Paddock India account or continue to the admin garage.',
+    eyebrow: 'Paddock India Account',
+    body: 'Sign in to your Paddock India account.',
+    action: 'Sign in',
+  },
+  'admin-login': {
+    title: 'Admin Sign In',
+    eyebrow: 'Paddock India Admin',
+    body: 'Sign in to manage site content.',
     action: 'Sign in',
   },
   signup: {
     title: 'Create Account',
-    body: 'Create a driver account. Admin roles are assigned from the secure admin panel.',
+    eyebrow: 'Paddock India Account',
+    body: 'Create your Paddock India account.',
     action: 'Create account',
   },
   forgot: {
     title: 'Reset Password',
-    body: 'Enter your email and we will send a reset link if the account exists.',
+    eyebrow: 'Account Help',
+    body: 'Enter your email and we will send a reset link.',
     action: 'Send reset link',
   },
   reset: {
     title: 'Set New Password',
+    eyebrow: 'Account Help',
     body: 'Choose a new password for your Paddock India account.',
     action: 'Update password',
   },
   verify: {
     title: 'Verify Email',
+    eyebrow: 'Account Help',
     body: 'Confirming your email address.',
     action: 'Verify email',
   },
@@ -68,7 +79,22 @@ export function AuthPage({ mode = 'login' }) {
           method: 'POST',
           body: { email: form.email, password: form.password },
         });
-        navigate(result.user?.isAdmin ? '/admin' : '/');
+        navigate('/');
+        return;
+      }
+
+      if (mode === 'admin-login') {
+        const result = await apiRequest('/api/auth/login', {
+          method: 'POST',
+          body: { email: form.email, password: form.password },
+        });
+
+        if (!result.user?.isAdmin) {
+          await apiRequest('/api/auth/logout', { method: 'POST', csrf: true }).catch(() => null);
+          throw new Error('admin_access_required');
+        }
+
+        navigate('/admin');
         return;
       }
 
@@ -107,7 +133,7 @@ export function AuthPage({ mode = 'login' }) {
           <ArrowLeft aria-hidden="true" />
           Track
         </button>
-        <p className="eyebrow">Paddock India Account</p>
+        <p className="eyebrow">{copy.eyebrow}</p>
         <h1 id="auth-title">{copy.title}</h1>
         <p>{copy.body}</p>
 
@@ -156,7 +182,7 @@ export function AuthPage({ mode = 'login' }) {
                 <span className="auth-input">
                   <Lock aria-hidden="true" />
                   <input
-                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    autoComplete={mode === 'login' || mode === 'admin-login' ? 'current-password' : 'new-password'}
                     id="password"
                     name="password"
                     required
@@ -181,7 +207,7 @@ export function AuthPage({ mode = 'login' }) {
 
         <nav className="auth-links" aria-label="Account links">
           {mode !== 'login' ? <button onClick={() => navigate('/login')}>Sign in</button> : null}
-          {mode !== 'signup' ? <button onClick={() => navigate('/signup')}>Create account</button> : null}
+          {mode !== 'signup' && mode !== 'admin-login' ? <button onClick={() => navigate('/signup')}>Create account</button> : null}
           {mode !== 'forgot' ? <button onClick={() => navigate('/forgot-password')}>Forgot password</button> : null}
         </nav>
       </section>
@@ -190,6 +216,10 @@ export function AuthPage({ mode = 'login' }) {
 }
 
 function readableError(error) {
+  if (error.message === 'admin_access_required') {
+    return 'Admin access is required.';
+  }
+
   const label = String(error.message || '').replace(/_/g, ' ');
   return label ? label.charAt(0).toUpperCase() + label.slice(1) : 'Request failed.';
 }

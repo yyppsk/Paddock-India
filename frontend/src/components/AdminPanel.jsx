@@ -2,13 +2,17 @@ import { LogOut, Plus, Save, Shield, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiRequest, navigate } from '../api.js';
 
-const roleOptions = ['user', 'content_manager', 'super_admin'];
+const roleOptions = [
+  { value: 'user', label: 'Member' },
+  { value: 'content_manager', label: 'Content Manager' },
+  { value: 'super_admin', label: 'Super Admin' },
+];
 
 export function AdminPanel() {
   const [user, setUser] = useState(null);
   const [sections, setSections] = useState([]);
   const [users, setUsers] = useState([]);
-  const [status, setStatus] = useState('Loading admin garage...');
+  const [status, setStatus] = useState('Loading admin panel...');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -19,7 +23,7 @@ export function AdminPanel() {
         const session = await apiRequest('/api/auth/session');
 
         if (!session.user) {
-          navigate('/login');
+          navigate('/admin/login');
           return;
         }
 
@@ -137,7 +141,7 @@ export function AdminPanel() {
         </button>
         <div>
           <p className="eyebrow">Super Admin</p>
-          <h1>Content Garage</h1>
+          <h1>Content Panel</h1>
         </div>
         {user ? (
           <button className="admin-logout" type="button" onClick={logout}>
@@ -194,8 +198,8 @@ export function AdminPanel() {
                     </div>
                     <select value={entry.role} onChange={(event) => changeRole(entry, event.target.value)}>
                       {roleOptions.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
+                        <option key={role.value} value={role.value}>
+                          {role.label}
                         </option>
                       ))}
                     </select>

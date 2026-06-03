@@ -74,6 +74,7 @@ function useBrowserRoute() {
 
 function getAuthMode(pathname) {
   if (pathname === '/login') return 'login';
+  if (pathname === '/admin/login') return 'admin-login';
   if (pathname === '/signup') return 'signup';
   if (pathname === '/forgot-password') return 'forgot';
   if (pathname === '/reset-password') return 'reset';
