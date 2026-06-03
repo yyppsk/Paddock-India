@@ -8,7 +8,7 @@ import { RaceHud } from './components/RaceHud.jsx';
 import { RouteNavigation } from './components/RouteNavigation.jsx';
 import { StoryPanels } from './components/StoryPanels.jsx';
 import { DEFAULT_CONTENT_SECTIONS, normalizeSections } from './contentDefaults.js';
-import { initRaceExperience } from './raceExperience.js';
+import { initRaceExperience, syncRaceExperienceContent } from './raceExperience.js';
 
 export function App() {
   const route = useBrowserRoute();
@@ -46,7 +46,10 @@ export function App() {
 }
 
 function RaceExperience({ sections }) {
-  useEffect(() => initRaceExperience(), [sections]);
+  useEffect(() => initRaceExperience(), []);
+  useEffect(() => {
+    syncRaceExperienceContent();
+  }, [sections]);
 
   return (
     <div id="app" className="relative min-h-screen text-paper">

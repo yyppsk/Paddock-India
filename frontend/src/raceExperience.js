@@ -68,9 +68,11 @@ let animationFrameId = 0;
 let disposed = false;
 let cleanupCallbacks = [];
 let activeCleanup = null;
+let activeRunId = 0;
 
 export function initRaceExperience() {
   activeCleanup?.();
+  const runId = ++activeRunId;
   bindDomElements();
   resetRaceState();
   setLoadingState(true);
@@ -79,10 +81,16 @@ export function initRaceExperience() {
     return () => {};
   }
 
-  init();
+  init(runId);
 
-  activeCleanup = cleanupRaceExperience;
-  return cleanupRaceExperience;
+  activeCleanup = () => cleanupRaceExperience(runId);
+  return activeCleanup;
+}
+
+export function syncRaceExperienceContent() {
+  routeNav = document.querySelector('.track-nav');
+  routeProgressValue = document.querySelector('#route-progress-value');
+  updatePanels(progress);
 }
 
 function bindDomElements() {
@@ -130,7 +138,11 @@ function resetRaceState() {
   cleanupCallbacks = [];
 }
 
-function cleanupRaceExperience() {
+function cleanupRaceExperience(runId = activeRunId) {
+  if (runId !== activeRunId) {
+    return;
+  }
+
   disposed = true;
   cleanupCallbacks.forEach((cleanup) => cleanup());
   cleanupCallbacks = [];
@@ -141,7 +153,7 @@ function cleanupRaceExperience() {
   activeCleanup = null;
 }
 
-async function init() {
+async function init(runId) {
   document.body.dataset.trackVersion = ACTIVE_TRACK_VERSION;
   document.body.dataset.environment = environmentMode;
   document.body.dataset.weather = weatherMode;
@@ -176,7 +188,7 @@ async function init() {
   scene.add(createGroundGrid());
 
   const realTrack = await loadRealTrackModel({ scene, version: ACTIVE_TRACK_VERSION });
-  if (disposed) {
+  if (!isRaceRunActive(runId)) {
     return;
   }
 
@@ -234,7 +246,7 @@ async function init() {
     }
   });
 
-  animationFrameId = requestAnimationFrame(animate);
+  animationFrameId = requestAnimationFrame(() => animate(runId));
 }
 
 function setLoadingState(isLoading) {
@@ -352,8 +364,12 @@ function updateTrackVersionStatus(state, realTrack = null) {
   trackVersionDetail.textContent = 'Loading real track variation';
 }
 
-function animate() {
-  if (disposed) {
+function isRaceRunActive(runId) {
+  return runId === activeRunId && !disposed;
+}
+
+function animate(runId) {
+  if (!isRaceRunActive(runId)) {
     return;
   }
 
@@ -418,7 +434,7 @@ function animate() {
   updateDebugState();
 
   renderer.render(scene, camera);
-  animationFrameId = requestAnimationFrame(animate);
+  animationFrameId = requestAnimationFrame(() => animate(runId));
 }
 
 function moveProgressToward(current, target, maxStep) {
